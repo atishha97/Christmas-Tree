@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Holiday Tree</title>
+
+    <!-- Meta tags for SEO and sharing -->
+    <meta name="description"
+        content="Create your personalized virtual Christmas tree and let friends hang ornaments with heartfelt messages.">
+    <meta property="og:title" content="The Holiday Tree">
+    <meta property="og:description" content="Decorate a virtual tree together with friends and family">
+    <meta property="og:type" content="website">
+
+    <!-- Google Fonts - Capriola -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Capriola&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'capriola': ['Capriola', 'cursive'],
+                    },
+                    colors: {
+                        'tree-bg': '#FAFFF7',
+                        'muted': '#ADA8A8',
+                        'signout': '#FF3232',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Vue.js 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+    <style>
+        * {
+            font-family: 'Capriola', cursive;
+        }
+
+        body {
+            background-color: #FAFFF7;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        .ornament-draggable {
+            cursor: grab;
+            user-select: none;
+            -webkit-user-drag: none;
+        }
+
+        .ornament-draggable:active {
+            cursor: grabbing;
+        }
+
+        .ornament-on-tree {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+            transition: transform 0.1s ease;
+        }
+
+        .ornament-on-tree:hover {
+            transform: translate(-50%, -50%) scale(1.1);
+        }
+
+        .tree-container {
+            position: relative;
+        }
+
+        .modal-backdrop {
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+
+        /* Hide scrollbar but allow scrolling */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <!-- Loading State -->
+        <div v-if="loading" class="min-h-screen flex items-center justify-center">
+            <div class="text-2xl text-muted">Loading...</div>
+        </div>
+
+        <!-- Landing Page (Anonymous users at root) -->
+        <div v-else-if="showLanding" class="min-h-screen flex flex-col items-center justify-center p-8">
+            <h1 class="text-4xl md:text-6xl text-center mb-4">The</h1>
+            <h1 class="text-4xl md:text-6xl text-center mb-8">Holiday Tree</h1>
+            <p class="text-muted text-center mb-8 max-w-md">
+                Create your personalized virtual Christmas tree and let friends and family hang ornaments with heartfelt
+                messages.
+            </p>
+            <button @click="signIn"
+                class="bg-white border-2 border-stone-300 rounded-lg px-8 py-3 font-bold hover:bg-stone-50 transition-colors">
+                Sign in to Create Your Tree
+            </button>
+        </div>
+
+        <!-- Main App (Tree View) -->
+        <div v-else class="min-h-screen">
+            <!-- MOBILE LAYOUT -->
+            <div v-if="isMobile" class="min-h-screen flex flex-col" style="padding: 40px 20px 0 20px;">
+                <!-- Top Section -->
+                <div class="flex gap-[30px] mb-4">
+                    <!-- Left: Title + Auth -->
+                    <div class="flex flex-col">
+                        <h1 class="text-2xl leading-tight">The</h1>
+                        <h1 class="text-2xl leading-tight mb-2">Holiday Tree</h1>
+                        <div v-if="user" class="text-[10px]">
+                            <span class="text-muted">{{ user.displayName }}</span>
+                            <span class="text-muted"> | </span>
+                            <button @click="signOut" class="text-signout">Sign Out</button>
+                        </div>
+                        <button v-else @click="signIn" class="text-[10px] text-muted text-left">
+                            Sign In
+                        </button>
+                    </div>
+
+                    <!-- Right: Instructions + Ornaments -->
+                    <div class="flex-1">
+                        <p class="text-[10px] text-muted mb-2">
+                            Drag one ornament onto the tree to leave a message for {{ isOwnTree ? 'your visitors' :
+                            ownerName }}
+                        </p>
+                        <div class="grid grid-cols-4 gap-2">
+                            <img v-for="i in 8" :key="i" :src="getOrnamentSrc(i)" :alt="'Ornament ' + i"
+                                class="w-10 h-10 ornament-draggable" draggable="true"
+                                @dragstart="onDragStart($event, i)">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Share Link (Owner only) -->
+                <div v-if="isOwnTree && currentTreeId" class="mb-4">
+                    <button @click="copyShareLink" class="text-[10px] text-muted underline">
+                        {{ copied ? '✓ Link copied!' : 'Copy link to share your tree' }}
+                    </button>
+                </div>
+
+                <!-- Tree Section -->
+                <div class="flex-1 flex items-center justify-center tree-container" style="padding: 0 20px 20px 20px;"
+                    ref="dropZone" @dragover.prevent @drop="onDrop">
+                    <div class="relative w-full h-full flex items-center justify-center">
+                        <img src="/assets/Mobile_ChristmasTree.png" alt="Christmas Tree"
+                            class="max-w-full max-h-full object-contain" ref="treeImage">
+                        <!-- Ornaments on tree -->
+                        <div v-for="ornament in ornaments" :key="ornament.id" class="ornament-on-tree"
+                            :style="{ left: ornament.x + '%', top: ornament.y + '%' }" @click="openViewModal(ornament)"
+                            :draggable="isOwnTree" @dragstart="onOrnamentDragStart($event, ornament)">
+                            <img :src="getOrnamentSrc(ornament.ornament_type)" class="w-10 h-10"
+                                :alt="'Ornament from ' + ornament.sender_name">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DESKTOP LAYOUT -->
+            <div v-else class="min-h-screen flex">
+                <!-- Left Panel -->
+                <div class="w-2/5 max-w-[500px] flex flex-col justify-center p-20">
+                    <h1 class="text-5xl lg:text-6xl xl:text-7xl leading-tight">The</h1>
+                    <h1 class="text-5xl lg:text-6xl xl:text-7xl leading-tight mb-8">Holiday Tree</h1>
+
+                    <!-- Ornament Palette -->
+                    <div class="grid grid-cols-4 gap-3 mb-4">
+                        <img v-for="i in 8" :key="i" :src="getOrnamentSrc(i)" :alt="'Ornament ' + i"
+                            class="w-14 h-14 ornament-draggable" draggable="true" @dragstart="onDragStart($event, i)">
+                    </div>
+
+                    <p class="text-sm text-muted mb-8">
+                        Drag one ornament onto the tree to leave a message for {{ isOwnTree ? 'your visitors' :
+                        ownerName }}
+                    </p>
+
+                    <!-- Share Link (Owner only) -->
+                    <div v-if="isOwnTree && currentTreeId" class="mb-6">
+                        <button @click="copyShareLink"
+                            class="text-sm text-muted underline hover:text-black transition-colors">
+                            {{ copied ? '✓ Link copied!' : 'Copy link to share your tree' }}
+                        </button>
+                    </div>
+
+                    <hr class="border-stone-200 mb-6">
+
+                    <!-- Auth Section -->
+                    <div v-if="user">
+                        <p class="text-sm text-muted">
+                            Signed in as {{ user.displayName }}
+                            <span class="mx-2">|</span>
+                            <button @click="signOut" class="text-signout hover:underline">Sign Out</button>
+                        </p>
+                    </div>
+                    <div v-else>
+                        <button @click="signIn"
+                            class="bg-white border-2 border-stone-300 rounded-lg px-6 py-2 font-bold hover:bg-stone-50 transition-colors">
+                            Sign in with Google
+                        </button>
+                        <p class="text-sm text-muted mt-2">Sign in to create your own tree</p>
+                    </div>
+                </div>
+
+                <!-- Right Panel - Tree -->
+                <div class="flex-1 flex items-center justify-center p-8 tree-container" ref="dropZone" @dragover.prevent
+                    @drop="onDrop">
+                    <div class="relative max-w-3xl w-full h-full flex items-center justify-center">
+                        <img src="/assets/ChristmasTree2.png" alt="Christmas Tree"
+                            class="max-w-full max-h-[90vh] object-contain" ref="treeImage">
+                        <!-- Ornaments on tree -->
+                        <div v-for="ornament in ornaments" :key="ornament.id" class="ornament-on-tree"
+                            :style="{ left: ornament.x + '%', top: ornament.y + '%' }" @click="openViewModal(ornament)"
+                            :draggable="isOwnTree" @dragstart="onOrnamentDragStart($event, ornament)">
+                            <img :src="getOrnamentSrc(ornament.ornament_type)" class="w-16 h-16"
+                                :alt="'Ornament from ' + ornament.sender_name">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Ornament Modal -->
+        <div v-if="showAddModal" class="fixed inset-0 modal-backdrop flex items-center justify-center z-50 p-4"
+            @click.self="closeAddModal">
+            <div class="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
+                <h2 class="text-2xl mb-4">Add Your Ornament</h2>
+
+                <div class="mb-4">
+                    <label class="block text-sm text-muted mb-1">Your Name</label>
+                    <input v-model="newOrnament.senderName" type="text" placeholder="Enter your name"
+                        class="w-full border-2 border-stone-200 rounded-lg px-4 py-2 focus:outline-none focus:border-stone-400"
+                        maxlength="50">
+                </div>
+
+                <div class="mb-6">
+                    <label class="block text-sm text-muted mb-1">Your Message</label>
+                    <textarea v-model="newOrnament.message" placeholder="Write a heartfelt message..."
+                        class="w-full border-2 border-stone-200 rounded-lg px-4 py-2 h-32 resize-none focus:outline-none focus:border-stone-400"
+                        maxlength="500"></textarea>
+                </div>
+
+                <div class="flex gap-3">
+                    <button @click="closeAddModal"
+                        class="flex-1 border-2 border-stone-200 rounded-lg py-2 hover:bg-stone-50 transition-colors">
+                        Cancel
+                    </button>
+                    <button @click="hangOrnament"
+                        :disabled="!newOrnament.senderName.trim() || !newOrnament.message.trim()"
+                        class="flex-1 bg-green-600 text-white rounded-lg py-2 hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                        Hang Ornament
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- View Ornament Modal -->
+        <div v-if="showViewModal && selectedOrnament"
+            class="fixed inset-0 modal-backdrop flex items-center justify-center z-50 p-4" @click.self="closeViewModal">
+            <div class="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
+                <div class="flex items-start gap-4 mb-4">
+                    <img :src="getOrnamentSrc(selectedOrnament.ornament_type)" class="w-16 h-16">
+                    <div>
+                        <h2 class="text-xl">From {{ selectedOrnament.sender_name }}</h2>
+                        <p class="text-sm text-muted">{{ formatDate(selectedOrnament.created_at) }}</p>
+                    </div>
+                </div>
+
+                <p class="text-lg mb-6 whitespace-pre-wrap">{{ selectedOrnament.message }}</p>
+
+                <div class="flex gap-3">
+                    <button @click="closeViewModal"
+                        class="flex-1 border-2 border-stone-200 rounded-lg py-2 hover:bg-stone-50 transition-colors">
+                        Close
+                    </button>
+                    <button v-if="canDeleteOrnament(selectedOrnament)" @click="confirmDeleteOrnament"
+                        class="flex-1 bg-red-500 text-white rounded-lg py-2 hover:bg-red-600 transition-colors">
+                        Remove Ornament
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Delete Confirmation Modal -->
+        <div v-if="showDeleteConfirm" class="fixed inset-0 modal-backdrop flex items-center justify-center z-50 p-4"
+            @click.self="showDeleteConfirm = false">
+            <div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl text-center">
+                <h2 class="text-xl mb-2">Remove Ornament?</h2>
+                <p class="text-muted mb-6">This action cannot be undone.</p>
+
+                <div class="flex gap-3">
+                    <button @click="showDeleteConfirm = false"
+                        class="flex-1 border-2 border-stone-200 rounded-lg py-2 hover:bg-stone-50 transition-colors">
+                        Cancel
+                    </button>
+                    <button @click="deleteOrnament"
+                        class="flex-1 bg-red-500 text-white rounded-lg py-2 hover:bg-red-600 transition-colors">
+                        Remove
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error Toast -->
+        <div v-if="errorMessage"
+            class="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50">
+            {{ errorMessage }}
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+
+</html>
