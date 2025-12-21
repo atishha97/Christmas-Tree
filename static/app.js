@@ -66,6 +66,7 @@ createApp({
             landingNames: ['Jeremie', 'Arul', 'John', 'Sarah', 'Mike', 'Emily', 'David', 'Jessica'],
             landingNameIndex: 0,
             landingNameInterval: null,
+            landingOrnaments: [],
 
             // Firestore listener
             ornamentsUnsubscribe: null
@@ -81,9 +82,11 @@ createApp({
     async mounted() {
         // Start name rotation
         this.currentLandingName = this.landingNames[0];
+        this.generateRandomOrnaments(); // Initial set
         this.landingNameInterval = setInterval(() => {
             this.landingNameIndex = (this.landingNameIndex + 1) % this.landingNames.length;
             this.currentLandingName = this.landingNames[this.landingNameIndex];
+            this.generateRandomOrnaments(); // New set for new name
         }, 3000);
 
         // Handle window resize
@@ -431,6 +434,37 @@ createApp({
         },
 
         // Utility functions
+        generateRandomOrnaments() {
+            const count = Math.floor(Math.random() * 6) + 5; // 5 to 10 ornaments
+            const newOrnaments = [];
+            for (let i = 0; i < count; i++) {
+                // Triangle distribution to match tree shape
+
+                // Random Y between 20% (top) and 85% (bottom)
+                const y = Math.floor(Math.random() * 65) + 20;
+
+                // Calculate allowable X width based on Y (wider at bottom)
+                // Linear interpolation:
+                // At y=20 (top), width variance is +/- 5% (Range 45-55)
+                // At y=85 (bottom), width variance is +/- 30% (Range 20-80)
+                // Slope = (30 - 5) / (85 - 20) = 25 / 65 ≈ 0.38
+
+                const widthVariance = 5 + (y - 20) * 0.38;
+
+                // Random X centered at 50%
+                const xOffset = (Math.random() * 2 - 1) * widthVariance; // -variance to +variance
+                const x = 50 + xOffset;
+
+                newOrnaments.push({
+                    id: Date.now() + i,
+                    x: Math.round(x), // round to integer %
+                    y: Math.round(y),
+                    ornament_type: Math.floor(Math.random() * 8) + 1
+                });
+            }
+            this.landingOrnaments = newOrnaments;
+        },
+
         formatDate(timestamp) {
             if (!timestamp) return '';
             const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
