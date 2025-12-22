@@ -219,7 +219,7 @@
                 </div>
 
                 <!-- 3. Tree Section -->
-                <div class="flex-1 flex items-end justify-center tree-container pb-8" ref="dropZone" @dragover.prevent
+                <div class="flex-1 flex items-end justify-center tree-container pb-0" ref="dropZone" @dragover.prevent
                     @drop="onDrop">
                     <div class="relative w-full h-full flex items-end justify-center">
                         <img src="/assets/Mobile_ChristmasTree.png" alt="Christmas Tree"
@@ -247,7 +247,7 @@
                             "'s" }} Holiday Tree</h1>
 
                         <!-- Ornament Palette -->
-                        <div class="grid grid-cols-4 gap-3 mb-4">
+                        <div class="grid grid-cols-4 gap-3 mb-4 w-full justify-items-center">
                             <img v-for="i in 8" :key="i" :src="getOrnamentSrc(i)" :alt="'Ornament ' + i"
                                 class="w-14 h-14 ornament-draggable object-contain" draggable="true"
                                 @dragstart="onDragStart($event, i)">
@@ -286,9 +286,9 @@
                 </div>
 
                 <!-- Right Panel - Tree -->
-                <div class="flex-1 flex items-center justify-center p-8 tree-container" ref="dropZone" @dragover.prevent
-                    @drop="onDrop">
-                    <div class="relative max-w-3xl w-full h-full flex items-center justify-center">
+                <div class="flex-1 flex items-end justify-center px-8 pt-8 pb-0 tree-container" ref="dropZone"
+                    @dragover.prevent @drop="onDrop">
+                    <div class="relative max-w-3xl w-full h-full flex items-end justify-center">
                         <img src="/assets/ChristmasTree2.png" alt="Christmas Tree"
                             class="max-w-full max-h-[90vh] object-contain" ref="treeImage">
                         <!-- Ornaments on tree -->
@@ -306,32 +306,44 @@
         <!-- Add Ornament Modal -->
         <div v-if="showAddModal" class="fixed inset-0 modal-backdrop flex items-center justify-center z-50 p-4"
             @click.self="closeAddModal">
-            <div class="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
-                <h2 class="text-2xl mb-4">Add Your Ornament</h2>
+            <div class="bg-white rounded-2xl p-8 w-full max-w-[400px] shadow-xl flex flex-col items-start relative">
 
+                <!-- Close Button -->
+                <button @click="closeAddModal"
+                    class="absolute top-4 right-4 text-stone-400 hover:text-stone-600 transition-colors p-2 rounded-full hover:bg-stone-100">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+
+                <!-- Selected Ornament Image -->
                 <div class="mb-4">
-                    <label class="block text-sm text-muted mb-1">Your Name</label>
-                    <input v-model="newOrnament.senderName" type="text" placeholder="Enter your name"
-                        class="w-full border-2 border-stone-200 rounded-lg px-4 py-2 focus:outline-none focus:border-stone-400"
-                        maxlength="50">
+                    <img :src="getOrnamentSrc(newOrnament.type)" class="w-12 h-12 object-contain filter drop-shadow-md">
                 </div>
 
-                <div class="mb-6">
-                    <label class="block text-sm text-muted mb-1">Your Message</label>
-                    <textarea v-model="newOrnament.message" placeholder="Write a heartfelt message..."
-                        class="w-full border-2 border-stone-200 rounded-lg px-4 py-2 h-32 resize-none focus:outline-none focus:border-stone-400"
+                <h2 class="text-[22px] font-semibold text-stone-900 mb-1 leading-[1.35]">Leave a message</h2>
+                <p class="text-slate-500 font-normal text-[15px] mb-6 leading-[1.45]">A wish, a memory, or a quiet note
+                </p>
+
+                <div class="w-full mb-4">
+                    <textarea v-model="newOrnament.message" placeholder="Write your wish here"
+                        class="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 h-32 resize-none focus:outline-none focus:ring-2 focus:ring-stone-200 placeholder-slate-400 text-stone-700 text-[16px] font-normal leading-[1.5]"
                         maxlength="500"></textarea>
                 </div>
 
-                <div class="flex gap-3">
-                    <button @click="closeAddModal"
-                        class="flex-1 border-2 border-stone-200 rounded-lg py-2 hover:bg-stone-50 transition-colors">
-                        Cancel
-                    </button>
+                <div class="w-full mb-8">
+                    <input v-model="newOrnament.senderName" type="text" placeholder="Signed by"
+                        class="w-full border-b border-stone-200 py-2 focus:outline-none focus:border-stone-400 placeholder-slate-400 text-stone-700 text-[14px] font-medium leading-[1.4]"
+                        maxlength="50">
+                </div>
+
+                <div class="w-full flex flex-col gap-3">
                     <button @click="hangOrnament"
                         :disabled="!newOrnament.senderName.trim() || !newOrnament.message.trim()"
-                        class="flex-1 bg-green-600 text-white rounded-lg py-2 hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                        Hang Ornament
+                        class="w-full bg-[#8B8B8B] text-white rounded-xl py-3 font-semibold hover:bg-[#757575] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm text-[16px] leading-[1.25]">
+                        Place on the tree
                     </button>
                 </div>
             </div>
