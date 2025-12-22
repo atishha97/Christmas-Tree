@@ -60,6 +60,12 @@ createApp({
             // Delete confirmation
             showDeleteConfirm: false,
 
+            // Thank You Modal
+            showThankYouModal: false,
+            lastAddedOrnamentType: null,
+
+            // Rotating names
+
             // Rotating names
             currentLandingName: 'The',
             // So if I use "The", I shouldn't have "'s".
@@ -394,7 +400,10 @@ createApp({
                     created_at: firebase.firestore.FieldValue.serverTimestamp()
                 });
 
+                // Save type for Thank You modal before resetting
+                this.lastAddedOrnamentType = this.newOrnament.type;
                 this.closeAddModal();
+                this.showThankYouModal = true;
             } catch (error) {
                 console.error('Error adding ornament:', error);
                 this.showError('Failed to add ornament. Please try again.');
@@ -450,6 +459,18 @@ createApp({
             } catch (error) {
                 console.error('Error deleting ornament:', error);
                 this.showError('Failed to remove ornament. Please try again.');
+            }
+        },
+
+        // Thank You Modal CTA
+        handleCreateTreeCTA() {
+            this.showThankYouModal = false;
+            // If user is already signed in, go to their tree
+            if (this.user) {
+                this.ensureUserTree();
+            } else {
+                // otherwise trigger sign in (which will redirect to tree on success)
+                this.signIn();
             }
         },
 

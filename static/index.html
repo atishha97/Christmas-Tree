@@ -445,6 +445,41 @@
             </div>
         </div>
 
+        <!-- Thank You Modal -->
+        <div v-if="showThankYouModal" class="fixed inset-0 modal-backdrop flex items-center justify-center z-50 p-4"
+            @click.self="showThankYouModal = false">
+            <div
+                class="bg-white rounded-[24px] px-8 py-12 w-full max-w-[400px] shadow-2xl flex flex-col items-center relative text-center">
+
+                <!-- Close Button -->
+                <button @click="showThankYouModal = false"
+                    class="absolute top-5 right-5 text-stone-300 hover:text-stone-500 transition-colors p-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                            d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+
+                <!-- Hung Ornament Image -->
+                <div class="mb-6">
+                    <img v-if="lastAddedOrnamentType" :src="getOrnamentSrc(lastAddedOrnamentType)"
+                        class="w-20 h-20 object-contain filter drop-shadow-md">
+                </div>
+
+                <h2 class="font-serif italic text-3xl text-stone-900 mb-2">Looks great!</h2>
+                <p class="text-[18px] text-stone-600 mb-8 font-normal font-['Avenir']">Thank you for adding your wish to
+                    the
+                    tree.
+                </p>
+
+                <button @click="handleCreateTreeCTA"
+                    class="w-full bg-stone-800 text-white rounded-full py-4 text-lg font-normal hover:bg-stone-700 transition-colors shadow-lg">
+                    Create your tree
+                </button>
+            </div>
+        </div>
+
         <!-- Error Toast -->
         <div v-if="errorMessage"
             class="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50">
