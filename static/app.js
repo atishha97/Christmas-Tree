@@ -75,7 +75,10 @@ createApp({
             landingOrnaments: [],
 
             // Firestore listener
-            ornamentsUnsubscribe: null
+            ornamentsUnsubscribe: null,
+
+            // Audio
+            chimeAudio: null
         };
     },
 
@@ -86,6 +89,10 @@ createApp({
     },
 
     async mounted() {
+        // Initialize audio
+        this.chimeAudio = new Audio('/assets/chime.mp3');
+        this.chimeAudio.volume = 1.0;
+
         // Start name rotation
         this.currentLandingName = this.landingNames[0];
         this.generateRandomOrnaments(); // Initial set
@@ -221,21 +228,57 @@ createApp({
                 this.ornamentsUnsubscribe();
             }
 
+            let initialLoad = true;
+
             // Real-time listener for ornaments
             this.ornamentsUnsubscribe = db.collection('ornaments')
                 .where('tree_id', '==', treeId)
                 .orderBy('created_at', 'asc')
                 .onSnapshot(
                     (snapshot) => {
+                        // Update state
                         this.ornaments = snapshot.docs.map(doc => ({
                             id: doc.id,
                             ...doc.data()
                         }));
+
+                        // Check for additions to play sound
+                        if (!initialLoad) {
+                            snapshot.docChanges().forEach((change) => {
+                                if (change.type === 'added') {
+                                    const data = change.doc.data();
+                                    // Play sound ONLY if it wasn't created by us (we play that manually)
+                                    // OR if we are anonymous (creator_id is null/diff)
+                                    // But to be safe, if we have a user and it matches, skip.
+                                    const isMyOrnament = this.user && data.creator_id === this.user.uid;
+
+                                    // Also check if it has pending writes (local change) to double verify
+                                    const isLocal = change.doc.metadata.hasPendingWrites;
+
+                                    if (!isMyOrnament && !isLocal) {
+                                        this.playChime();
+                                    }
+                                }
+                            });
+                        } else {
+                            initialLoad = false;
+                        }
                     },
                     (error) => {
                         console.error('Error listening to ornaments:', error);
                     }
                 );
+        },
+
+        playChime() {
+            if (this.chimeAudio) {
+                try {
+                    this.chimeAudio.currentTime = 0;
+                    this.chimeAudio.play().catch(e => console.log('Audio playback failed (likely blocked):', e));
+                } catch (err) {
+                    console.error('Error playing sound:', err);
+                }
+            }
         },
 
         // Authentication
@@ -360,6 +403,16 @@ createApp({
 
         // Add Ornament Modal
         openAddModal(type, x, y) {
+            // UNLOCK AUDIO HERE (User Interaction)
+            if (this.chimeAudio) {
+                this.chimeAudio.play().then(() => {
+                    this.chimeAudio.pause();
+                    this.chimeAudio.currentTime = 0;
+                }).catch(e => {
+                    // Ignore error here, it might fail if already playing or strict policy
+                });
+            }
+
             this.newOrnament = {
                 type: type,
                 x: x,
@@ -399,6 +452,9 @@ createApp({
                     creator_id: this.user?.uid || null,
                     created_at: firebase.firestore.FieldValue.serverTimestamp()
                 });
+
+                // Play sound immediately for the user
+                this.playChime();
 
                 // Save type for Thank You modal before resetting
                 this.lastAddedOrnamentType = this.newOrnament.type;
