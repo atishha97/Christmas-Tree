@@ -132,6 +132,7 @@ createApp({
             } else {
                 // Anonymous user at root - show landing
                 this.showLanding = true;
+                this.updatePageTitle();
             }
         },
 
@@ -197,6 +198,9 @@ createApp({
                 this.ownerId = treeData.owner_id;
                 this.ownerName = treeData.owner_name;
 
+                // Update title and meta
+                this.updatePageTitle(this.ownerName);
+
                 // Subscribe to ornaments
                 this.subscribeToOrnaments(treeId);
             } catch (error) {
@@ -253,6 +257,7 @@ createApp({
                     this.showLanding = true;
                     this.currentTreeId = null;
                     this.ornaments = [];
+                    this.updatePageTitle();
                 }
             } catch (error) {
                 console.error('Sign out error:', error);
@@ -317,6 +322,34 @@ createApp({
 
             this.draggedOrnament = null;
             this.draggedOrnamentType = null;
+        },
+
+        // Tap to Place (Mobile)
+        onPaletteClick(index) {
+            // Immediately open modal with random position
+            const pos = this.getRandomTreePosition();
+            this.openAddModal(index, pos.x, pos.y);
+        },
+
+        onTreeClick(event) {
+            // Only proceed if an ornament is selected from palette
+            if (!this.selectedPaletteOrnament) return;
+
+            const dropZone = this.$refs.dropZone;
+            const rect = dropZone.getBoundingClientRect();
+
+            // Calculate percentage position
+            // Use event.touches if available (touch), otherwise clientX/Y (mouse/click)
+            const clientX = event.clientX || (event.touches ? event.touches[0].clientX : 0);
+            const clientY = event.clientY || (event.touches ? event.touches[0].clientY : 0);
+
+            const x = ((clientX - rect.left) / rect.width) * 100;
+            const y = ((clientY - rect.top) / rect.height) * 100;
+
+            this.openAddModal(this.selectedPaletteOrnament, x, y);
+
+            // Reset selection after placing
+            this.selectedPaletteOrnament = null;
         },
 
         // Add Ornament Modal
@@ -438,33 +471,38 @@ createApp({
             const count = Math.floor(Math.random() * 5) + 4; // 4 to 8 ornaments
             const newOrnaments = [];
             for (let i = 0; i < count; i++) {
-                // Triangle distribution to match tree shape
-
-                // Random Y between 50% (middle) and 85% (bottom)
-                const y = Math.floor(Math.random() * 35) + 50;
-
-                // Calculate allowable X width based on Y (wider at bottom)
-                // Linear interpolation:
-                // At y=20 (top), width variance is +/- 5% (Range 45-55)
-                // At y=85 (bottom), width variance is +/- 30% (Range 20-80)
-                // Slope = (30 - 5) / (85 - 20) = 25 / 65 ≈ 0.38
-
-                const widthVariance = 5 + (y - 20) * 0.38;
-
-                // Random X centered at 50%
-                const xOffset = (Math.random() * 2 - 1) * widthVariance; // -variance to +variance
-                const x = 50 + xOffset;
-
+                const pos = this.getRandomTreePosition();
                 newOrnaments.push({
                     id: Date.now() + i,
-                    x: Math.round(x), // round to integer %
-                    y: Math.round(y),
+                    x: pos.x,
+                    y: pos.y,
                     ornament_type: Math.floor(Math.random() * 8) + 1
                 });
             }
             this.landingOrnaments = newOrnaments;
         },
 
+        getRandomTreePosition() {
+            // Triangle distribution to match tree shape
+
+            // Random Y between 20% (top) and 85% (bottom)
+            // Adjusted: top should be a bit lower to avoid star
+            const y = Math.floor(Math.random() * 60) + 25; // Logic: 25 to 85
+
+            // Calculate allowable X width based on Y (wider at bottom)
+            // Linear interpolation:
+            // At y=20, width variance is +/- 5%
+            // At y=85, width variance is +/- 30%
+            // Slope = (30 - 5) / (85 - 20) = 25 / 65 ≈ 0.38
+
+            const variance = 5 + (y - 20) * 0.38;
+
+            // Random X centered at 50%
+            const xOffset = (Math.random() * 2 - 1) * variance; // -variance to +variance
+            const x = 50 + xOffset;
+
+            return { x: Math.round(x), y: Math.round(y) };
+        },
         formatDate(timestamp) {
             if (!timestamp) return '';
             const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
@@ -478,6 +516,17 @@ createApp({
         showError(message) {
             this.errorMessage = message;
             setTimeout(() => { this.errorMessage = ''; }, 5000);
+        },
+
+        updatePageTitle(name = null) {
+            const title = name ? `${name}'s Holiday Tree` : 'The Holiday Tree';
+            document.title = title;
+
+            // Update OpenGraph title if it exists
+            const ogTitle = document.querySelector('meta[property="og:title"]');
+            if (ogTitle) {
+                ogTitle.setAttribute('content', title);
+            }
         }
     }
 }).mount('#app');

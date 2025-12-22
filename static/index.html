@@ -170,7 +170,7 @@
             <div class="flex-1 flex items-end justify-center p-8 pb-0">
                 <div class="relative max-w-3xl w-fit h-full flex items-end justify-center mx-auto">
                     <img src="/assets/ChristmasTreeNew.png" alt="Christmas Tree"
-                        class="max-w-full max-h-[40vh] md:max-h-[90vh] object-contain filter drop-shadow-xl">
+                        class="max-w-full max-h-[65vh] md:max-h-[90vh] object-contain filter drop-shadow-xl">
                     <!-- Random Ornaments -->
                     <div v-for="ornament in landingOrnaments" :key="ornament.id" class="ornament-on-tree"
                         :style="{ left: ornament.x + '%', top: ornament.y + '%' }">
@@ -191,7 +191,7 @@
                     <!-- Left Side: Title & Auth -->
                     <div class="flex flex-col w-[45%] pr-1">
                         <h1 class="font-serif italic text-4xl leading-[1.1] text-black mb-6">
-                            <div>The</div>
+                            <div>{{ isOwnTree ? 'My' : ownerName + "'s" }}</div>
                             <div>Holiday</div>
                             <div>Tree</div>
                         </h1>
@@ -213,13 +213,13 @@
                     <!-- Right Side: Instructions & Grid -->
                     <div class="flex flex-col w-[50%] pl-1">
                         <p class="text-[13px] text-black mb-4 leading-tight">
-                            Drag one ornament onto the tree to begin.
+                            Press and hold an ornament, then drag it onto the tree to begin.
                         </p>
                         <!-- Ornament Grid (4x2) -->
                         <div class="grid grid-cols-4 gap-x-2 gap-y-2 justify-items-center">
                             <img v-for="i in 8" :key="i" :src="getOrnamentSrc(i)" :alt="'Ornament ' + i"
                                 class="w-12 h-12 ornament-draggable object-contain cursor-grab active:cursor-grabbing hover:scale-110 transition-transform filter drop-shadow-sm"
-                                draggable="true" @dragstart="onDragStart($event, i)">
+                                draggable="true" @dragstart="onDragStart($event, i)" @click="onPaletteClick(i)">
                         </div>
                     </div>
                 </div>
@@ -228,11 +228,12 @@
                     @drop="onDrop">
                     <div class="relative w-full h-full flex items-end justify-center">
                         <img src="/assets/ChristmasTreeNew.png" alt="Christmas Tree"
-                            class="max-w-full max-h-[75vh] object-contain filter drop-shadow-xl" ref="treeImage">
+                            class="max-w-full max-h-[85vh] object-contain filter drop-shadow-xl" ref="treeImage">
                         <!-- Ornaments on tree -->
                         <div v-for="ornament in ornaments" :key="ornament.id" class="ornament-on-tree"
-                            :style="{ left: ornament.x + '%', top: ornament.y + '%' }" @click="openViewModal(ornament)"
-                            :draggable="isOwnTree" @dragstart="onOrnamentDragStart($event, ornament)">
+                            :style="{ left: ornament.x + '%', top: ornament.y + '%' }"
+                            @click.stop="openViewModal(ornament)" :draggable="isOwnTree"
+                            @dragstart="onOrnamentDragStart($event, ornament)">
                             <img :src="getOrnamentSrc(ornament.ornament_type)"
                                 class="w-10 h-10 drop-shadow-lg transform transition hover:scale-110 object-contain"
                                 :alt="'Ornament from ' + ornament.sender_name">
@@ -294,8 +295,9 @@
                             class="max-w-full max-h-[90vh] object-contain" ref="treeImage">
                         <!-- Ornaments on tree -->
                         <div v-for="ornament in ornaments" :key="ornament.id" class="ornament-on-tree"
-                            :style="{ left: ornament.x + '%', top: ornament.y + '%' }" @click="openViewModal(ornament)"
-                            :draggable="isOwnTree" @dragstart="onOrnamentDragStart($event, ornament)">
+                            :style="{ left: ornament.x + '%', top: ornament.y + '%' }"
+                            @click.stop="openViewModal(ornament)" :draggable="isOwnTree"
+                            @dragstart="onOrnamentDragStart($event, ornament)">
                             <img :src="getOrnamentSrc(ornament.ornament_type)"
                                 class="w-16 h-16 object-contain transform transition hover:scale-110"
                                 :alt="'Ornament from ' + ornament.sender_name">
@@ -450,7 +452,7 @@
         </div>
     </div>
 
-    <script src="/static/app.js?v=3"></script>
+    <script src="/static/app.js?v=4"></script>
 </body>
 
 </html>
